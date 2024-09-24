@@ -1,5 +1,5 @@
 from yt_dlp.extractor.common import InfoExtractor
-from yt_dlp.compat import compat_urllib_parse
+import urllib.parse
 
 INSTANCES = [
     'inv.nadeko.net',
@@ -13,7 +13,7 @@ INSTANCES_HOST_REGEX = '(?:' + '|'.join([instance.replace('.', r'\.') for instan
 
 class InvidiousIE(InfoExtractor):
     _ENABLED = False
-    _VALID_URL = r'https?://(?:www\.)?' + INSTANCES_HOST_REGEX + r'/watch\?v=(?P<id>.+)'
+    _VALID_URL = r'https?://(?:www\.)?' + INSTANCES_HOST_REGEX + r'/watch\?v=(?P<id>[0-9A-Za-z_-]{11})'
     _TESTS = [
         {
             'url': 'https://y.com.sb/watch?v=xKTygGa6hg0',
@@ -92,7 +92,7 @@ class InvidiousIE(InfoExtractor):
         return out
 
     def _patch_url(self, url):
-        return compat_urllib_parse.urlparse(url)._replace(netloc=self.url_netloc).geturl()
+        return urllib.parse.urlparse(url)._replace(netloc=self.url_netloc).geturl()
 
     def _get_formats(self, api_response):
         all_formats = []
@@ -140,7 +140,7 @@ class InvidiousIE(InfoExtractor):
         webpage = None
 
         # host_url will contain `http[s]://example.com` where `example.com` is the used invidious instance.
-        url_parsed = compat_urllib_parse.urlparse(url)
+        url_parsed = urllib.parse.urlparse(url)
         self.url_netloc = url_parsed.netloc
         host_url = url_parsed.scheme + '://' + url_parsed.netloc
 
@@ -188,7 +188,7 @@ class InvidiousIE(InfoExtractor):
 
 class InvidiousPlaylistIE(InfoExtractor):
     _ENABLED = False
-    _VALID_URL = r'https?://(?:www\.)?' + INSTANCES_HOST_REGEX + r'/playlist\?list=(?P<id>.+)'
+    _VALID_URL = r'https?://(?:www\.)?' + INSTANCES_HOST_REGEX + r'/playlist\?list=(?P<id>[\w-]+)'
     _TEST = {
         'url': 'https://yt.artemislena.eu/playlist?list=PLowKtXNTBypGqImE405J2565dvjafglHU',
         'md5': 'de4a9175071169961fe7cf2b6740da12',
@@ -210,7 +210,7 @@ class InvidiousPlaylistIE(InfoExtractor):
         playlist_id = self._match_id(url)
 
         # host_url will contain `http[s]://example.com` where `example.com` is the used invidious instance.
-        url_parsed = compat_urllib_parse.urlparse(url)
+        url_parsed = urllib.parse.urlparse(url)
         self.host_url = url_parsed.scheme + '://' + url_parsed.netloc
 
         api_response = self._download_json(self.host_url + '/api/v1/playlists/' + playlist_id, playlist_id)

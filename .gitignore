@@ -4,3 +4,5 @@ __pycache__
 *.zip
 bundle/
 dist/
+yt-dlp/
+tmp/
