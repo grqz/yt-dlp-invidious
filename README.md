@@ -1,4 +1,5 @@
-This repository contains a sample plugin package for [yt-dlp](https://github.com/yt-dlp/yt-dlp#readme).
+# InvidiousIE
+<!--This repository contains a sample plugin package for [yt-dlp](https://github.com/yt-dlp/yt-dlp#readme).
 
 See [yt-dlp plugins](https://github.com/yt-dlp/yt-dlp#plugins) for more details.
 
@@ -43,3 +44,4 @@ finally:
 To create a release, simply increment the version in the `pyproject.toml` file.
 While convenient, conditional requirements or non pure python modules will most likely not work.
 Please edit the `.github/workflows/release.yml` accordingly if you require more control.
+-->

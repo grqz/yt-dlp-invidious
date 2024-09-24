@@ -1,5 +1,5 @@
 name: Create release
-on: [push]
+on: [workflow_dispatch]
 
 jobs:
   release:
@@ -21,7 +21,7 @@ jobs:
     - name: Set variables
       id: set_variables
       run: |
-        tag="$(git describe --tags --abbrev=0)"
+        tag=$(git for-each-ref refs/tags --sort=-creatordate --format='%(refname:strip=2)' --count=1)
         echo "::group::Variables"
         cat << EOF | tee -a "$GITHUB_OUTPUT"
         tag=${tag}

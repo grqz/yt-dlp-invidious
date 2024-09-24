@@ -3,14 +3,14 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "yt-dlp-sample-plugins"
-version = "2023.01.02"
+name = "yt-dlp-invidious"
+version = "2024.09.24"
 readme = "README.md"
 requires-python = ">=3.8"
-license = "MIT"
+license = {file = "LICENSE"}
 keywords = ["yt-dlp", "yt-dlp-plugin"]
 authors = [
-  { name = "John Doe", email = "johndoe@example.com" },
+  { name = "grqz" },
 ]
 dependencies = []
 
