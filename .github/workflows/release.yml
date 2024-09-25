@@ -7,7 +7,7 @@ concurrency:
 
 jobs:
   release_gh:
-    name: Create a release on Githb
+    name: Create a release on Github
     permissions:
       contents: write
     runs-on: ubuntu-latest
