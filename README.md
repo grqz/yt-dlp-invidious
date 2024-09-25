@@ -1,6 +1,7 @@
 # yt-dlp-invidious
 This is a plugin for [yt-dlp](https://github.com/yt-dlp/yt-dlp#readme).  
-The plugin adds two extractors: `InvidiousIE` and `InvidiousPlaylistIE`.
+The plugin adds two extractors: `InvidiousIE` and `InvidiousPlaylistIE`.  
+The code is based on https://github.com/ytdl-org/youtube-dl/pull/31426.
 
 ## Installation
 1. Download the zip from Github releases page. <!--Link needed-->
@@ -8,7 +9,7 @@ The plugin adds two extractors: `InvidiousIE` and `InvidiousPlaylistIE`.
 2. Follow [installing yt-dlp plugins](https://github.com/yt-dlp/yt-dlp#installing-plugins) to install the plugin.
 
 ## Usage
-Pass `--ies Invidious,InvidiousPlaylistIE` to yt-dlp. The plugin automatically matches the video id so you can just pass a YouTube link.
+Pass `--ies Invidious,InvidiousPlaylistIE` to yt-dlp. The plugin automatically matches the video id so you can just pass a YouTube link or even just a video_id.
 
 ### Extractor arguments
 `InvidiousIE`:
