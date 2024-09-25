@@ -1,9 +1,16 @@
-from yt_dlp.extractor.common import InfoExtractor
 import urllib.parse
 
+from yt_dlp.extractor.common import InfoExtractor
+from yt_dlp.extractor.youtube import YoutubeIE
+from yt_dlp.utils import (
+    ExtractorError,
+    mimetype2ext,
+    traverse_obj,
+)
+
 INSTANCES = [
-    'inv.nadeko.net',
     'invidious.nerdvpn.de',
+    'inv.nadeko.net',
     'invidious.jing.rocks',
     'invidious.privacyredirect.com',
 ]
@@ -46,78 +53,75 @@ class InvidiousIE(InfoExtractor):
         },
     ]
 
-    def __init__(self, downloader=None):
-        super().__init__(downloader)
+    @classmethod
+    def suitable(cls, url):
+        """Receives a URL and returns True if suitable for this IE."""
+        # This function must import everything it needs (except other extractors),
+        # so that lazy_extractors works correctly
+        return cls._match_valid_url(url) is not None or YoutubeIE.suitable(url)
 
-    # type is either 'video' or 'audio'
-    # ext is the file extension
     @staticmethod
-    def _get_additional_format_data(format_type, bitrate, resolution, fps):
+    def _get_additional_format_data(format_, format_stream=False):
         out = {}
 
         try:
+            format_type = format_.get('type')
+            bitrate = float(format_.get('bitrate')) / 1000
             type_and_ext, codecs = format_type.split(';')
+            type_ = type_and_ext.split('/')[0]
+            codecs_val = codecs.split('"')[1]
         except Exception:
             pass
 
-        try:
-            type_, ext = type_and_ext.split('/')
-            # codec = codecs.split('"')[1]
-            out['ext'] = ext
-            # if type_ == 'audio':
-            #     out['acodec'] = codec
-            # elif type_ == 'video':
-            #     out['vcodec'] = codec
-        except Exception:
-            pass
+        out['ext'] = mimetype2ext(type_and_ext)
+        out['tbr'] = bitrate
 
-        try:
-            bitrate = float(bitrate) / 1000
-            # if type_ == 'audio':
-            #     out['abr'] = bitrate
-            # elif type_ == 'video':
-            #     out['vbr'] = bitrate
-            # out['tbr'] = bitrate
-        except Exception:
-            pass
+        if format_stream:
+            codecs_ = codecs_val.split(',')
+            vcodec = codecs_[0].strip()
+            acodec = codecs_[1].strip()
+            out.update({
+                'acodec': acodec,
+                'vcodec': vcodec,
+            })
+        elif type_ == 'audio':
+            out['acodec'] = codecs_val
+            out['vcodec'] = 'none'
+        elif type_ == 'video':
+            out['vcodec'] = codecs_val
+            out['acodec'] = 'none'
 
-        try:
-            if type_ == 'audio':
-                out['resolution'] = type_and_ext + ' @ ' + str(bitrate) + 'k - audio only'
-            elif type_ == 'video':
-                out['resolution'] = resolution + ' - ' + type_and_ext + ' @ ' + str(fps) + 'fps - video only'
-        except Exception:
-            pass
-
+        out.update(traverse_obj(format_, {
+            'container': 'container',
+            'fps': 'fps',
+            'resolution': 'size',
+            'audio_channels': 'audioChannels',
+            'asr': 'audioSampleRate',
+            'format_id': 'itag',
+        }))
         return out
 
     def _patch_url(self, url):
         return urllib.parse.urlparse(url)._replace(netloc=self.url_netloc).geturl()
 
     def _get_formats(self, api_response):
-        all_formats = []
+        formats = []
 
         # Video/audio only
-        for format_ in api_response.get('adaptiveFormats') or []:
-            all_formats.append({
+        for format_ in traverse_obj(api_response, 'adaptiveFormats') or []:
+            formats.append({
                 'url': self._patch_url(format_['url']),
-                'format_id': format_.get('itag'),
-                # 'fps': format_.get('fps'),
-                # 'container': format_.get('container'),
-                **InvidiousIE._get_additional_format_data(format_.get('type'), format_.get('bitrate'), format_.get('resolution'), format_.get('fps')),
+                **InvidiousIE._get_additional_format_data(format_),
             })
 
         # Both video and audio
-        for format_ in api_response.get('formatStreams') or []:
-            all_formats.append({
+        for format_ in traverse_obj(api_response, 'formatStreams') or []:
+            formats.append({
                 'url': self._patch_url(format_['url']),
-                'format_id': format_.get('itag'),
-                # 'fps': format_.get('fps'),
-                # 'container': format_.get('container'),
-                **InvidiousIE._get_additional_format_data(format_.get('type'), format_.get('bitrate'), format_.get('resolution'), format_.get('fps')),
+                **InvidiousIE._get_additional_format_data(format_, format_stream=True),
             })
 
-        return all_formats
+        return formats
 
     def _get_thumbnails(self, api_response):
         thumbnails = []
@@ -135,27 +139,59 @@ class InvidiousIE(InfoExtractor):
         return thumbnails
 
     def _real_extract(self, url):
-        video_id = self._match_id(url)
-        global webpage
-        webpage = None
+        video_id = (self._match_valid_url(url) or YoutubeIE._match_valid_url(url)).group('id')
+
+        max_retries = self._configuration_arg('max_retries', ['5'], casesense=True)[0]
+        if isinstance(max_retries, str) and max_retries.lower() == 'infinite':
+            max_retries = 'inf'
+        max_retries = float(max_retries)
 
         # host_url will contain `http[s]://example.com` where `example.com` is the used invidious instance.
         url_parsed = urllib.parse.urlparse(url)
+        url = urllib.parse.urlunparse((
+            url_parsed.scheme or 'http',
+            url_parsed.netloc or INSTANCES[0],
+            url_parsed.path,
+            url_parsed.params,
+            url_parsed.query,
+            url_parsed.fragment,
+        ))
+        url_parsed = urllib.parse.urlparse(url)
         self.url_netloc = url_parsed.netloc
-        host_url = url_parsed.scheme + '://' + url_parsed.netloc
+        host_url = f'{url_parsed.scheme}://{self.url_netloc}'
+        webpage = self._download_webpage(url, video_id, fatal=False) or ''
 
-        api_response = self._download_json(host_url + '/api/v1/videos/' + video_id, video_id)
+        retries = 0.0
+        while retries <= max_retries:
+            api_response, api_urlh = self._download_webpage_handle(
+                f'{host_url}/api/v1/videos/{video_id}',
+                video_id, 'Downloading API response', expected_status=(500, 502))
 
-        def download_webpage_and(fn, fatal=True):
-            global webpage
-            if webpage is None:
-                webpage = self._download_webpage(url, video_id, fatal=fatal)
-            return fn()
+            if api_urlh.status == 502:
+                error = 'HTTP Error 502: Bad Gateway'
+            else:
+                api_response = self._parse_json(api_response, video_id)
+
+                if api_urlh.status == 200:
+                    break
+
+                if error := api_response.get('error'):
+                    if 'Sign in to confirm your age' in error:
+                        raise ExtractorError(error, expected=True)
+                else:
+                    error = f'HTTP Error {api_urlh.status}: {api_response}'
+            error += f' (retry {retries}/{max_retries})'
+
+            if retries + 1 > max_retries:
+                raise ExtractorError(error)
+            self.report_warning(error)
+            self._sleep(5, video_id)
+            retries += 1
 
         out = {
             'id': video_id,
-            'title': api_response.get('title') or download_webpage_and(lambda: self._og_search_title(webpage)),
-            'description': api_response.get('description') or download_webpage_and(lambda: self._og_search_description(webpage)),
+            'title': api_response.get('title') or self._og_search_title(webpage),
+            'description': api_response.get('description') or self._og_search_description(webpage),
 
             'release_timestamp': api_response.get('published'),
 
@@ -214,7 +250,9 @@ class InvidiousPlaylistIE(InfoExtractor):
         self.host_url = url_parsed.scheme + '://' + url_parsed.netloc
 
         api_response = self._download_json(self.host_url + '/api/v1/playlists/' + playlist_id, playlist_id)
-        return InfoExtractor.playlist_result(self._get_entries(api_response), playlist_id, api_response.get('title'), api_response.get('description')) | {
+        return {
+            **self.playlist_result(
+                self._get_entries(api_response), playlist_id, api_response.get('title'), api_response.get('description')),
             'release_timestamp': api_response.get('updated'),
             'uploader': api_response.get('author'),
             'uploader_id': api_response.get('authorId'),

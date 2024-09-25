@@ -6,3 +6,4 @@ bundle/
 dist/
 yt-dlp/
 tmp/
+.vscode/
