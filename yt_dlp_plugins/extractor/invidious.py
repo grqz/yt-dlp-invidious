@@ -133,7 +133,7 @@ class InvidiousIE(InfoExtractor):
                 'url': thumbnail.get('url'),
                 'quality': len(video_thumbnails) - inversed_quality,
                 'width': thumbnail.get('width'),
-                'height': thumbnail.get('height')
+                'height': thumbnail.get('height'),
             })
 
         return thumbnails
@@ -188,7 +188,7 @@ class InvidiousIE(InfoExtractor):
             self._sleep(5, video_id)
             retries += 1
 
-        out = {
+        return {
             'id': video_id,
             'title': api_response.get('title') or self._og_search_title(webpage),
             'description': api_response.get('description') or self._og_search_description(webpage),
@@ -207,19 +207,14 @@ class InvidiousIE(InfoExtractor):
             'like_count': api_response.get('likeCount'),
             'dislike_count': api_response.get('dislikeCount'),
 
-            # 'isFamilyFriendly': 18 if api_response.get('isFamilyFriendly') == False else None
+            'age_limit': 18 if api_response.get('isFamilyFriendly') is False else None,
 
             'tags': api_response.get('keywords'),
             'is_live': api_response.get('liveNow'),
 
             'formats': self._get_formats(api_response),
-            'thumbnails': self._get_thumbnails(api_response)
+            'thumbnails': self._get_thumbnails(api_response),
         }
-
-        if api_response.get('isFamilyFriendly') is False:
-            out['age_limit'] = 18
-
-        return out
 
 
 class InvidiousPlaylistIE(InfoExtractor):
