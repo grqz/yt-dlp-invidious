@@ -42,10 +42,21 @@ python3 -m pip install -U yt-dlp-invidious
 For more locations and methods, see [installing yt-dlp plugins](https://github.com/yt-dlp/yt-dlp#installing-plugins)
 
 ## Usage
-Pass `--ies "Invidious,InvidiousPlaylist,default,-youtube,-youtubeplaylist"` to yt-dlp. The plugin automatically matches the video id/playlist id so you can just pass a YouTube link or even just a video id/playlist id.
+
+### Auto-fallback mode (recommended)
+
+Just use yt-dlp as normal, the plugin will automatically fall back to invidious when YoutubeIE or YoutubePlaylistIE reported 'Sign in to confirm you’re not a bot. This helps protect our community. Learn more'.
+
+### Force override mode
+
+Pass `--ies "Invidious,InvidiousPlaylist,default,-youtube,-youtubeplaylist"` to yt-dlp. The plugin automatically matches the video id/playlist id so you can just pass a YouTube link or even just a video id/playlist id. For single urls/video ids, use `invidious:<url>` instead of `<url>` to force yt-dlp to use Invidious.
+
+### Disable the plugin
+
+Pass `--ies "default,-Invidious.*OverrideIE"` to disable the plugin.
 
 ### Extractor arguments
-`InvidiousIE`:
-- `max_retries`: maxium retry times.  
-	e.g. `--extractor-args "Invidious:max_retries=infinite"` (unrecommended),  
-	`--extractor-args "Invidious:max_retries=3"`, etc.
+- `InvidiousIE`:
+    - `max_retries`: maxium retry times.  
+        e.g. `--extractor-args "Invidious:max_retries=infinite"` (unrecommended),  
+        `--extractor-args "Invidious:max_retries=3"`.
