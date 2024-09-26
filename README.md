@@ -51,10 +51,6 @@ Just use yt-dlp as normal, the plugin will automatically fall back to invidious 
 
 Pass `--ies "Invidious,InvidiousPlaylist,default,-youtube,-youtubeplaylist"` to yt-dlp. The plugin automatically matches the video id/playlist id so you can just pass a YouTube link or even just a video id/playlist id. For single urls/video ids, use `invidious:<url>` instead of `<url>` to force yt-dlp to use Invidious.
 
-### Disable the plugin
-
-Pass `--ies "default,-Invidious.*OverrideIE"` to disable the plugin.
-
 ### Extractor arguments
 - `InvidiousIE`:
     - `max_retries`: maxium retry times.  
