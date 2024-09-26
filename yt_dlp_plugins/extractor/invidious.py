@@ -4,15 +4,16 @@ from yt_dlp.extractor.common import InfoExtractor
 from yt_dlp.extractor.youtube import YoutubeIE, YoutubePlaylistIE
 from yt_dlp.utils import (
     ExtractorError,
+    float_or_none,
     mimetype2ext,
     traverse_obj,
 )
 
 INSTANCES = [
+    'inv.nadeko.net',
     'invidious.jing.rocks',
     'invidious.nerdvpn.de',
     'invidious.privacyredirect.com',
-    'inv.nadeko.net',
 ]
 
 INSTANCES_HOST_REGEX = '(?:' + '|'.join([instance.replace('.', r'\.') for instance in INSTANCES]) + ')'
@@ -164,12 +165,17 @@ class InvidiousIE(InfoExtractor):
         self.url_netloc = url_parsed.netloc
         host_url = f'{url_parsed.scheme}://{self.url_netloc}'
 
-        max_retries = self._configuration_arg('max_retries', ['5'], casesense=True)[0]
-        if isinstance(max_retries, str) and max_retries.lower() == 'infinite':
-            max_retries = 'inf'
-        max_retries = float(max_retries)
+        max_retries = self._configuration_arg('max_retries', ['5'])[0]
+        if isinstance(max_retries, str) and max_retries.lower() in ('inf', 'infinite'):
+            max_retries = float('inf')
+        else:
+            max_retries = int(max_retries)
 
-        retries = 0.0
+        retry_interval = traverse_obj(
+            self._configuration_arg('retry_interval', ['5']),
+            (0, {float_or_none}), 5)
+
+        retries = 0
         while retries <= max_retries:
             api_response, api_urlh = self._download_webpage_handle(
                 f'{host_url}/api/v1/videos/{video_id}', video_id,
@@ -192,7 +198,7 @@ class InvidiousIE(InfoExtractor):
             if retries + 1 > max_retries:
                 raise ExtractorError(error)
             self.report_warning(error)
-            self._sleep(5, video_id)
+            self._sleep(retry_interval, video_id)
             retries += 1
 
         self.webpage = ''
@@ -243,15 +249,15 @@ class InvidiousPlaylistIE(InfoExtractor):
             'description': 'md5:c54543163f50447f8cf0bb1ae4cb35ed',
             'uploader': 'Ben Eater',
             'uploader_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
-            'channel_url': 'http://invidious.jing.rocks/channel/UCS0N5baNlQWJCUrhCEo8WlA',
+            'channel_url': rf're:^http://{INSTANCES_HOST_REGEX}/channel/UCS0N5baNlQWJCUrhCEo8WlA',
             'like_count': int,
             'dislike_count': int,
             'tags': [],
-            'thumbnail': 'https://invidious.jing.rocks/vi/HyznrdDSSGM/maxresdefault.jpg',
-            'release_timestamp': 1727222400,
+            'thumbnail': rf're:^https://{INSTANCES_HOST_REGEX}/vi/HyznrdDSSGM/maxresdefault.jpg',
+            'release_timestamp': 1457481600,
             'duration': 413,
             'view_count': int,
-            'release_date': '20240925',
+            'release_date': '20160309',
             'channel_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
             'channel': 'Ben Eater',
         },
@@ -262,11 +268,16 @@ class InvidiousPlaylistIE(InfoExtractor):
         'info_dict': {
             'id': 'PLtuQtEgOYpLMBnyVgQBUxF4bFSnBqIEbC',
             'title': 'Aya Nakamura - AYA (Official playlist)',
-            'release_date': '20210317',
+            'release_date': '20210318',
             'description': 'md5:22c0ebf2c22063207422487cf428665a',
             'uploader_id': 'UC-69vhXlCa3XHbF8JHCQHfg',
             'uploader': 'Aya Nakamura',
-            'release_timestamp': 1615993200,
+            'release_timestamp': 1616025600,
+            'channel_id': 'UC-69vhXlCa3XHbF8JHCQHfg',
+            'channel': 'Aya Nakamura',
+            'thumbnail': 'https://i.ytimg.com/vi/u6chNKY-QkA/hqdefault.jpg?sqp=-oaymwEWCKgBEF5IWvKriqkDCQgBFQAAiEIYAQ==&rs=AOn4CLAy_p0csVqSTplc0jy0huqH34jBNg',
+            'view_count': int,
+            'channel_url': rf're:^http://{INSTANCES_HOST_REGEX}/channel/UC-69vhXlCa3XHbF8JHCQHfg',
         },
         'expected_warnings': ['retry'],
     }]
@@ -301,5 +312,9 @@ class InvidiousPlaylistIE(InfoExtractor):
                 'release_timestamp': 'updated',
                 'uploader': 'author',
                 'uploader_id': 'authorId',
-                # TODO: more metadata fields
+                'channel': 'author',
+                'channel_id': 'authorId',
+                'view_count': 'viewCount',
+                'thumbnail': 'playlistThumbnail',
+                'channel_url': ('authorUrl', {lambda url: self.host_url + url}),
             }))
