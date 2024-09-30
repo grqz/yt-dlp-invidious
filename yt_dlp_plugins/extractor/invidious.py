@@ -77,14 +77,11 @@ class InvidiousIE(InfoExtractor):
     def _get_additional_format_data(format_, format_stream=False):
         out = {}
 
-        try:
-            format_type = format_.get('type')
-            bitrate = float(format_.get('bitrate')) / 1000
-            type_and_ext, codecs = format_type.split(';')
-            type_ = type_and_ext.split('/')[0]
-            codecs_val = codecs.split('"')[1]
-        except Exception:
-            pass
+        format_type = format_.get('type')
+        bitrate = float(format_.get('bitrate')) / 1000
+        type_and_ext, codecs = format_type.split(';')
+        type_ = type_and_ext.split('/')[0]
+        codecs_val = codecs.split('"')[1]
 
         out['ext'] = mimetype2ext(type_and_ext)
         out['tbr'] = bitrate
