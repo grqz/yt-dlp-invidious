@@ -1,3 +1,4 @@
+import re
 import urllib.parse
 
 from yt_dlp.extractor.common import InfoExtractor
@@ -6,6 +7,7 @@ from yt_dlp.utils import (
     ExtractorError,
     float_or_none,
     mimetype2ext,
+    parse_codecs,
     traverse_obj,
 )
 
@@ -28,19 +30,19 @@ class InvidiousIE(InfoExtractor):
             'id': 'xKTygGa6hg0',
             'ext': 'mp4',
             'title': 'Coding in C++ - Creating a Player Controller - CRYENGINE Summer Academy S1E5 - [Tutorial]',
-            'thumbnail': 'https://invidious.jing.rocks/vi/xKTygGa6hg0/maxresdefault.jpg',
+            'thumbnail': rf're:^https://{INSTANCES_HOST_REGEX}/vi/xKTygGa6hg0/maxresdefault.jpg',
             'channel': 'CRYENGINE',
             'dislike_count': int,
             'uploader': 'CRYENGINE',
             'channel_id': 'UCtaXcIVFp8HEpthm7qwtKCQ',
             'like_count': int,
-            'release_timestamp': 1727222400,
+            'release_timestamp': int,
             'view_count': int,
-            'release_date': '20240925',
+            'release_date': str,
             'duration': 1591,
             'description': 'md5:7aa75816d40ffccdbf3e15a90b05fca3',
             'uploader_id': 'UCtaXcIVFp8HEpthm7qwtKCQ',
-            'channel_url': 'http://invidious.jing.rocks/channel/UCtaXcIVFp8HEpthm7qwtKCQ',
+            'channel_url': rf're:^http://{INSTANCES_HOST_REGEX}/channel/UCtaXcIVFp8HEpthm7qwtKCQ',
             'tags': 'count:24',
         },
         'expected_warnings': ['retry'],
@@ -51,7 +53,7 @@ class InvidiousIE(InfoExtractor):
             'id': 'BaW_jenozKc',
             'ext': 'mp4',
             'title': 'youtube-dl test video "\'/\\ä↭𝕐',
-            'release_timestamp': 1727222400,
+            'release_timestamp': int,
             'channel_id': 'UCLqxVugv74EIW3VWh2NOa3Q',
             'thumbnail': 'https://invidious.jing.rocks/vi/BaW_jenozKc/maxresdefault.jpg',
             'description': 'md5:8fb536f4877b8a7455c2ec23794dbc22',
@@ -61,7 +63,7 @@ class InvidiousIE(InfoExtractor):
             'channel_url': 'https://invidious.jing.rocks/channel/UCLqxVugv74EIW3VWh2NOa3Q',
             'tags': ['youtube-dl'],
             'like_count': int,
-            'release_date': '20240925',
+            'release_date': str,
             'dislike_count': int,
             'uploader': 'Philipp Hagemeister',
             'uploader_id': 'UCLqxVugv74EIW3VWh2NOa3Q',
@@ -74,28 +76,16 @@ class InvidiousIE(InfoExtractor):
         return super().suitable(url) or YoutubeIE.suitable(url)
 
     @staticmethod
-    def _get_additional_format_data(format_, format_stream=False):
+    def _get_additional_format_data(format_):
         out = {}
-
-        format_type = format_.get('type')
         bitrate = float(format_.get('bitrate')) / 1000
-        type_and_ext, codecs = format_type.split(';')
-        type_ = type_and_ext.split('/')[0]
-        codecs_val = codecs.split('"')[1]
-
-        out['ext'] = mimetype2ext(type_and_ext)
         out['tbr'] = bitrate
 
-        if format_stream:
-            codecs_ = codecs_val.split(',')
-            out['vcodec'] = codecs_[0].strip()
-            out['acodec'] = codecs_[1].strip()
-        elif type_ == 'audio':
-            out['acodec'] = codecs_val
-            out['vcodec'] = 'none'
-        elif type_ == 'video':
-            out['vcodec'] = codecs_val
-            out['acodec'] = 'none'
+        mime_mobj = re.match(
+            r'((?:[^/]+)/(?:[^;]+))(?:;\s*codecs="([^"]+)")?', format_.get('type') or '')
+        if mime_mobj:
+            out['ext'] = mimetype2ext(mime_mobj.group(1))
+            out.update(parse_codecs(mime_mobj.group(2)))
 
         out.update(traverse_obj(format_, {
             'container': 'container',
@@ -124,7 +114,7 @@ class InvidiousIE(InfoExtractor):
         # Both video and audio
         for format_ in traverse_obj(api_response, 'formatStreams') or []:
             formats.append({
-                **InvidiousIE._get_additional_format_data(format_, format_stream=True),
+                **InvidiousIE._get_additional_format_data(format_),
                 'url': self._patch_url(format_['url']),
             })
 
@@ -142,7 +132,7 @@ class InvidiousIE(InfoExtractor):
                 'width': thumbnail.get('width'),
                 'height': thumbnail.get('height'),
             })
-
+        # TODO: better thumbnail extraction
         return thumbnails
 
     def _real_extract(self, url):
@@ -158,6 +148,7 @@ class InvidiousIE(InfoExtractor):
             url_parsed.query,
             url_parsed.fragment,
         ))
+        # TODO: extractor arg: preferred_instance
         url_parsed = urllib.parse.urlparse(url)
         self.url_netloc = url_parsed.netloc
         host_url = f'{url_parsed.scheme}://{self.url_netloc}'
@@ -238,25 +229,42 @@ class InvidiousPlaylistIE(InfoExtractor):
     _VALID_URL = r'https?://(?:www\.)?' + INSTANCES_HOST_REGEX + r'/playlist\?list=(?P<id>[\w-]+)'
     _TESTS = [{
         'url': 'PLowKtXNTBypGqImE405J2565dvjafglHU',
-        'md5': 'f28a429de8d5e2ca2b6a7ad84bb38139',
+        'playlist_count': 44,
+        'playlist': [{
+            'md5': 'f28a429de8d5e2ca2b6a7ad84bb38139',
+            'info_dict': {
+                'id': 'HyznrdDSSGM',
+                'ext': 'mp4',
+                'title': '8-bit computer update',
+                'description': 'md5:c54543163f50447f8cf0bb1ae4cb35ed',
+                'uploader': 'Ben Eater',
+                'uploader_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
+                'channel_url': rf're:^http://{INSTANCES_HOST_REGEX}/channel/UCS0N5baNlQWJCUrhCEo8WlA',
+                'like_count': int,
+                'dislike_count': int,
+                'tags': [],
+                'thumbnail': rf're:^https://{INSTANCES_HOST_REGEX}/vi/HyznrdDSSGM/maxresdefault.jpg',
+                'release_timestamp': 1457481600,
+                'duration': 413,
+                'view_count': int,
+                'release_date': '20160309',
+                'channel_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
+                'channel': 'Ben Eater',
+            },
+        }],
         'info_dict': {
-            'id': 'HyznrdDSSGM',
-            'ext': 'mp4',
-            'title': '8-bit computer update',
-            'description': 'md5:c54543163f50447f8cf0bb1ae4cb35ed',
+            'id': 'PLowKtXNTBypGqImE405J2565dvjafglHU',
+            'release_timestamp': int,
             'uploader': 'Ben Eater',
-            'uploader_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
-            'channel_url': rf're:^http://{INSTANCES_HOST_REGEX}/channel/UCS0N5baNlQWJCUrhCEo8WlA',
-            'like_count': int,
-            'dislike_count': int,
-            'tags': [],
-            'thumbnail': rf're:^https://{INSTANCES_HOST_REGEX}/vi/HyznrdDSSGM/maxresdefault.jpg',
-            'release_timestamp': 1457481600,
-            'duration': 413,
             'view_count': int,
-            'release_date': '20160309',
-            'channel_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
             'channel': 'Ben Eater',
+            'channel_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
+            'channel_url': 'http://inv.nadeko.net/channel/UCS0N5baNlQWJCUrhCEo8WlA',
+            'description': '',
+            'release_date': str,
+            'thumbnail': 'https://i.ytimg.com/vi/HyznrdDSSGM/hqdefault.jpg?sqp=-oaymwEwCKgBEF5IWvKriqkDIwgBFQAAiEIYAfABAfgB_gmAAtAFigIMCAAQARhlIGMoWTAP&rs=AOn4CLBr1RBM0zAUp6CGBe_DJAWww5j2Rg',
+            'uploader_id': 'UCS0N5baNlQWJCUrhCEo8WlA',
+            'title': 'Building an 8-bit breadboard computer!',
         },
         'expected_warnings': ['retry'],
     }, {
