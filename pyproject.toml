@@ -21,6 +21,9 @@ path = ".venv"
 [tool.hatch.build.targets.wheel]
 packages = ["yt_dlp_plugins"]
 
+[tool.poetry]
+packages = [{ include = "yt_dlp_plugins" }]
+
 [tool.ruff]
 line-length = 120
 
