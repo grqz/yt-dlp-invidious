@@ -55,7 +55,7 @@ Use something like `--extractor-args "invidious:max_retries=3;retry_interval=3.4
 See [EXTRACTOR ARGUMENTS](https://github.com/yt-dlp/yt-dlp?tab=readme-ov-file#extractor-arguments) for more details.
 
 #### **invidious**
-- `max_retries`: maxium retry times. (default: 5)  
+- `max_retries`: maximum retry times. (default: 5)  
     e.g. `infinite` (unrecommended), `3`.
 - `retry_interval`: interval between retries (in seconds). (default: 5)  
     e.g. `3.45`.
