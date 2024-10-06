@@ -137,18 +137,22 @@ class InvidiousIE(InfoExtractor):
 
     def _real_extract(self, url):
         video_id = (self._match_valid_url(url) or YoutubeIE._match_valid_url(url)).group('id')
+        preferred_instance = self._configuration_arg('preferred_instance', [INSTANCES[0]])[0]
 
         # host_url will contain `http[s]://example.com` where `example.com` is the used invidious instance.
         url_parsed = urllib.parse.urlparse(url)
         url = urllib.parse.urlunparse((
             url_parsed.scheme or 'http',
-            INSTANCES[0] if url_parsed.netloc not in INSTANCES else url_parsed.netloc,
+            (
+                preferred_instance
+                if url_parsed.netloc not in [preferred_instance, *INSTANCES]
+                else url_parsed.netloc
+            ),
             url_parsed.path,
             url_parsed.params,
             url_parsed.query,
             url_parsed.fragment,
         ))
-        # TODO: extractor arg: preferred_instance
         url_parsed = urllib.parse.urlparse(url)
         self.url_netloc = url_parsed.netloc
         host_url = f'{url_parsed.scheme}://{self.url_netloc}'
@@ -160,8 +164,7 @@ class InvidiousIE(InfoExtractor):
             max_retries = int(max_retries)
 
         retry_interval = traverse_obj(
-            self._configuration_arg('retry_interval', ['5']),
-            (0, {float_or_none}), 5)
+            self._configuration_arg('retry_interval', ['5']), (0, {float_or_none}))
 
         retries = 0
         while retries <= max_retries:
@@ -297,13 +300,14 @@ class InvidiousPlaylistIE(InfoExtractor):
 
     def _real_extract(self, url):
         playlist_id = (self._match_valid_url(url) or YoutubePlaylistIE._match_valid_url(url)).group('id')
+        preferred_instance = self._configuration_arg('preferred_instance', [INSTANCES[0]])[0]
 
         # host_url will contain `http[s]://example.com` where `example.com` is the used invidious instance.
         url_parsed = urllib.parse.urlparse(url)
-        if url_parsed.netloc in INSTANCES:
+        if url_parsed.netloc in [preferred_instance, *INSTANCES]:
             netloc = url_parsed.netloc
         else:
-            netloc = INSTANCES[0]
+            netloc = preferred_instance
 
         self.host_url = f'{url_parsed.scheme or "http"}://{netloc}'
 
